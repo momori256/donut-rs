@@ -8,21 +8,19 @@ fn main() {
     let r2 = 2.0;
     let k2 = 5.0;
     let k1 = (width as f64) * k2 * 3.0 / (8.0 * (r1 + r2));
-    // let ratio = width as f64 / height as f64;
 
-    let scalex = |p: f64| (width as f64) / 6.0 * (p + r1 + r2);
-    let scaley = |p: f64| (height as f64) / 6.0 * (-p + r1 + r2);
-
+    let mut screen = vec![vec![(0.0, 0.0); width + 1]; height + 1];
     let mut a = 0.0_f64;
     let mut b = 0.0_f64;
     loop {
-        let mut screen = vec![vec![(0.0, 0.0); width + 1]; height + 1];
         let step = 2.0 * PI / 100.0;
 
         let ca = a.cos();
         let sa = a.sin();
         let cb = b.cos();
         let sb = b.sin();
+
+        screen.iter_mut().for_each(|r| r.fill((0.0, 0.0)));
 
         let mut s = 0.0_f64;
         while s < 2.0 * PI - step {
@@ -34,38 +32,28 @@ fn main() {
                 let ct = t.cos();
                 let st = t.sin();
 
-                let x0 = r2 + r1 * ct;
-                let y0 = r1 * st;
-                let z0 = 0.0_f64;
+                let rot_s = vec![vec![cs, 0.0, ss], vec![0.0, 1.0, 0.0], vec![-ss, 0.0, cs]];
+                let rot_a = vec![vec![1.0, 0.0, 0.0], vec![0.0, ca, sa], vec![0.0, -sa, ca]];
+                let rot_b = vec![vec![cb, sb, 0.0], vec![-sb, cb, 0.0], vec![0.0, 0.0, 1.0]];
 
-                let x = x0 * (cs * cb + ss * sa * sb) - y0 * ca * sb;
-                let y = x0 * (cs * sb - ss * sa * cb) + y0 * ca * cb;
-                let z = k2 + x0 * ss * ca + y0 * sa;
+                let xyz = vec![vec![r2 + r1 * ct, r1 * st, 0.0]];
+                let xyz = dot(&xyz, &rot_s).unwrap();
+                let xyz = dot(&xyz, &rot_a).unwrap();
+                let xyz = dot(&xyz, &rot_b).unwrap();
+
+                let x = xyz[0][0];
+                let y = xyz[0][1];
+                let z = k2 + xyz[0][2];
                 let ooz = 1.0 / z;
 
                 let xp = ((width as f64) / 2.0 + k1 * ooz * x) as usize;
                 let yp = ((height as f64) / 2.0 - k1 * ooz * y) as usize;
-                // let nx0 = ct;
-                // let ny0 = st;
-                // let nz0 = 0;
 
-                // let nx = nx0 * (cs * cb + ss * sa * sb) - ny0 * ca * sb;
-                // let ny = nx0 * (cs * sb - ss * sa * cb) + ny0 * ca * cb;
-                // let nz = nx0 * ss * ca + ny0 * sa;
-
-                let l = cs * ct * sb - ss * ct * ca - st * sa + cb * (st * ca - ss * ct * sa);
-                // let l = ny - nz;
-                // println!("{l}, {x}, {y}, {z}, {xp}, {yp}");
-                // if l <= 0.0 {
-                //     continue;
-                // }
-
-                // let xp = scalex(x);
-                // let yp = scaley(y);
-
-                // println!("{}, {}", x as usize, y as usize);
-                // let x = if xp >= 0.0 { xp + 0.5 } else { xp - 0.5 } as usize;
-                // let y = if yp >= 0.0 { yp + 0.5 } else { yp - 0.5 } as usize;
+                let nxyz = vec![vec![ct, st, 0.0]];
+                let nxyz = dot(&nxyz, &rot_s).unwrap();
+                let nxyz = dot(&nxyz, &rot_a).unwrap();
+                let nxyz = dot(&nxyz, &rot_b).unwrap();
+                let l = dot(&nxyz, &vec![vec![0.0], vec![1.0], vec![-1.0]]).unwrap()[0][0];
 
                 if l > 0.0 {
                     if ooz > screen[yp][xp].0 {
@@ -83,13 +71,7 @@ fn main() {
             .iter()
             .map(|v| {
                 v.iter()
-                    .map(|&x| " ,-~:;=!*#$@".chars().nth(x.1 as usize).unwrap())
-                    // .map(|&x| " @".chars().nth(x.1 as usize).unwrap())
-                    // .map(|&x| match x {
-                    //     1 => "@",
-                    //     2 => "@",
-                    //     _ => " ",
-                    // })
+                    .map(|&x| ".,-~:;=!*#$@".chars().nth(x.1 as usize).unwrap())
                     .join(" ")
             })
             .join("\n");
@@ -100,7 +82,7 @@ fn main() {
 
         a += 0.05;
         b += 0.03;
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        std::thread::sleep(std::time::Duration::from_millis(20));
     }
 }
 
@@ -110,4 +92,64 @@ fn move_cursor(x: usize, y: usize) {
 
 fn clear_screen() {
     print!("\x1b[2J");
+}
+
+fn dot<T>(a: &Vec<Vec<T>>, b: &Vec<Vec<T>>) -> Result<Vec<Vec<T>>, ()>
+where
+    T: Default + Copy + std::ops::Mul<Output = T> + std::ops::AddAssign,
+{
+    let ra = a.len();
+    let cb = b[0].len();
+    let ca = a[0].len();
+    if ca != b.len() {
+        println!("{ca}, {}", b.len());
+        return Err(());
+    }
+
+    let mut result = vec![vec![T::default(); cb]; ra];
+
+    for i in 0..ra {
+        for j in 0..cb {
+            let mut acc = T::default();
+            for k in 0..ca {
+                acc += a[i][k] * b[k][j];
+            }
+            result[i][j] = acc;
+        }
+    }
+
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dot_r2c2_r2c2() {
+        let a = vec![vec![2, 5], vec![4, 7]];
+        let b = vec![vec![1, 3], vec![6, 9]];
+        let result = dot(&a, &b);
+        let x = vec![vec![32, 51], vec![46, 75]];
+        assert_eq!(result, Ok(x));
+    }
+
+    #[test]
+    fn dot_r1c3_r3c2() {
+        let a = vec![vec![2, 4, 6]];
+        let b = vec![vec![7, 5], vec![3, 4], vec![6, 2]];
+        let result = dot(&a, &b);
+        let x = vec![vec![62, 38]];
+        assert_eq!(result, Ok(x));
+    }
+
+    #[test]
+    fn dot_r1c2_r2c2_r2c2() {
+        let a = vec![vec![1, 2]];
+        let b = vec![vec![1, 2], vec![1, 2]];
+        let c = vec![vec![1, 2], vec![1, 2]];
+        let result = dot(&dot(&a, &b).unwrap(), &c);
+        let x = vec![vec![9, 18]];
+        assert_eq!(result, Ok(x));
+    }
 }

@@ -1,6 +1,63 @@
 use itertools::Itertools;
 use std::f64::consts::PI;
 
+fn main() {
+    const PI2: f64 = 2.0 * PI;
+
+    const WIDTH: usize = 30; // Screen width.
+    const HEIGHT: usize = 30; // Screen height.
+    const R1: f64 = 1.0;
+    const R2: f64 = 2.0;
+    const K2: f64 = 5.0;
+    const K1: f64 = (WIDTH as f64) * K2 * 3.0 / (8.0 * (R1 + R2));
+    let mut screen = Screen::new(WIDTH, HEIGHT, K1, K2);
+
+    const GRANULARITY_S: usize = 100;
+    const GRANULARITY_T: usize = 50;
+
+    let s_values: Vec<_> = (0..GRANULARITY_S)
+        .map(|si| PI2 * (si as f64) / (GRANULARITY_S as f64))
+        .collect();
+
+    let t_values: Vec<_> = (0..GRANULARITY_T)
+        .map(|ti| PI2 * (ti as f64) / (GRANULARITY_T as f64))
+        .collect();
+
+    const STEP_A: f64 = 0.05;
+    const STEP_B: f64 = 0.03;
+    const SLEEP_MS: u64 = 20;
+
+    let mut a = 0.0;
+    let mut b = 0.0;
+
+    let next_radian = |x, step| (x + step) % PI2;
+
+    loop {
+        screen.clear();
+
+        s_values
+            .iter()
+            .map(|&s| {
+                return t_values.iter().map(move |&t| {
+                    let p = Point::new(R2 + R1 * t.cos(), R1 * t.sin(), 0.0);
+                    let p = p.rot_y(s).rot_x(a).rot_z(b);
+
+                    let np = Point::new(t.cos(), t.sin(), 0.0);
+                    let np = np.rot_y(s).rot_x(a).rot_z(b);
+                    let luminance = np.in_prod(&[0.0, 1.0, -1.0]);
+                    return (p, luminance);
+                });
+            })
+            .flatten()
+            .for_each(|(point, luminance)| screen.set(&point, luminance));
+
+        screen.draw();
+        a = next_radian(a, STEP_A);
+        b = next_radian(b, STEP_B);
+        std::thread::sleep(std::time::Duration::from_millis(SLEEP_MS));
+    }
+}
+
 struct Point {
     xyz: Vec<f64>,
 }
@@ -23,6 +80,7 @@ impl Point {
         self.xyz[2]
     }
 
+    /// Rotate point around x-axis.
     fn rot_x(self, radian: f64) -> Self {
         let c = radian.cos();
         let s = radian.sin();
@@ -33,6 +91,7 @@ impl Point {
         }
     }
 
+    /// Rotate point around y-axis.
     fn rot_y(self, radian: f64) -> Self {
         let c = radian.cos();
         let s = radian.sin();
@@ -43,6 +102,7 @@ impl Point {
         }
     }
 
+    /// Rotate point around z-axis.
     fn rot_z(self, radian: f64) -> Self {
         let c = radian.cos();
         let s = radian.sin();
@@ -146,63 +206,6 @@ impl Screen {
         print!("\x1b[2J");
     }
 }
-
-fn main() {
-    const PI2: f64 = 2.0 * PI;
-    const WIDTH: usize = 30;
-    const HEIGHT: usize = 30;
-    const R1: f64 = 1.0;
-    const R2: f64 = 2.0;
-    const K2: f64 = 5.0;
-    const K1: f64 = (WIDTH as f64) * K2 * 3.0 / (8.0 * (R1 + R2));
-    let mut screen = Screen::new(WIDTH, HEIGHT, K1, K2);
-
-    const GRANULARITY_T: usize = 100;
-    const GRANULARITY_S: usize = 50;
-
-    let t_values: Vec<_> = (0..GRANULARITY_T)
-        .map(|ti| PI2 * (ti as f64) / (GRANULARITY_T as f64))
-        .collect();
-
-    let s_values: Vec<_> = (0..GRANULARITY_S)
-        .map(|si| PI2 * (si as f64) / (GRANULARITY_S as f64))
-        .collect();
-
-    const STEP_A: f64 = 0.05;
-    const STEP_B: f64 = 0.03;
-    const SLEEP_MS: u64 = 20;
-
-    let mut a = 0.0;
-    let mut b = 0.0;
-
-    let next_radian = |x, step| (x + step) % PI2;
-
-    loop {
-        screen.clear();
-
-        t_values
-            .iter()
-            .map(|&t| {
-                return s_values.iter().map(move |&s| {
-                    let p = Point::new(R2 + R1 * t.cos(), R1 * t.sin(), 0.0);
-                    let p = p.rot_y(s).rot_x(a).rot_z(b);
-
-                    let np = Point::new(t.cos(), t.sin(), 0.0);
-                    let np = np.rot_y(s).rot_x(a).rot_z(b);
-                    let luminance = np.in_prod(&[0.0, 1.0, -1.0]);
-                    return (p, luminance);
-                });
-            })
-            .flatten()
-            .for_each(|(point, luminance)| screen.set(&point, luminance));
-
-        screen.draw();
-        a = next_radian(a, STEP_A);
-        b = next_radian(b, STEP_B);
-        std::thread::sleep(std::time::Duration::from_millis(SLEEP_MS));
-    }
-}
-
 fn dot<T>(a: &Vec<Vec<T>>, b: &Vec<Vec<T>>) -> Result<Vec<Vec<T>>, ()>
 where
     T: Default + Copy + std::ops::Mul<Output = T> + std::ops::AddAssign,

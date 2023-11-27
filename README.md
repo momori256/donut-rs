@@ -1,6 +1,6 @@
 # Donut Rust
 
-Rust implementation of a rotating donut in terminal.
+Rust implementation of a rotating donut in a terminal.
 
 https://github.com/momori256/donut-rs/assets/90558309/e506f375-e5a3-4075-8ec1-0967083ceef7
 

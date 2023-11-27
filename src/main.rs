@@ -148,38 +148,43 @@ impl Screen {
 }
 
 fn main() {
-    let width = 30;
-    let height = 30;
-    let r1 = 1.0;
-    let r2 = 2.0;
-    let k2 = 5.0;
-    let k1 = (width as f64) * k2 * 3.0 / (8.0 * (r1 + r2));
+    const PI2: f64 = 2.0 * PI;
+    const WIDTH: usize = 30;
+    const HEIGHT: usize = 30;
+    const R1: f64 = 1.0;
+    const R2: f64 = 2.0;
+    const K2: f64 = 5.0;
+    const K1: f64 = (WIDTH as f64) * K2 * 3.0 / (8.0 * (R1 + R2));
+    let mut screen = Screen::new(WIDTH, HEIGHT, K1, K2);
 
-    let mut screen = Screen::new(width, height, k1, k2);
-    let granularity_t = 100;
-    let granularity_s = 100;
+    const GRANULARITY_T: usize = 100;
+    const GRANULARITY_S: usize = 50;
 
-    let ts: Vec<_> = (0..granularity_t)
-        .map(|ti| 2.0 * PI * (ti as f64) / (granularity_t as f64))
+    let t_values: Vec<_> = (0..GRANULARITY_T)
+        .map(|ti| PI2 * (ti as f64) / (GRANULARITY_T as f64))
         .collect();
 
-    let ss: Vec<_> = (0..granularity_s)
-        .map(|si| 2.0 * PI * (si as f64) / (granularity_s as f64))
+    let s_values: Vec<_> = (0..GRANULARITY_S)
+        .map(|si| PI2 * (si as f64) / (GRANULARITY_S as f64))
         .collect();
 
-    let mut a = 0.0_f64;
-    let mut b = 0.0_f64;
-    let step_a = 0.05;
-    let step_b = 0.03;
-    let sleep_ms = 20;
+    const STEP_A: f64 = 0.05;
+    const STEP_B: f64 = 0.03;
+    const SLEEP_MS: u64 = 20;
+
+    let mut a = 0.0;
+    let mut b = 0.0;
+
+    let next_radian = |x, step| (x + step) % PI2;
 
     loop {
         screen.clear();
 
-        ts.iter()
+        t_values
+            .iter()
             .map(|&t| {
-                return ss.iter().map(move |&s| {
-                    let p = Point::new(r2 + r1 * t.cos(), r1 * t.sin(), 0.0);
+                return s_values.iter().map(move |&s| {
+                    let p = Point::new(R2 + R1 * t.cos(), R1 * t.sin(), 0.0);
                     let p = p.rot_y(s).rot_x(a).rot_z(b);
 
                     let np = Point::new(t.cos(), t.sin(), 0.0);
@@ -192,10 +197,9 @@ fn main() {
             .for_each(|(point, luminance)| screen.set(&point, luminance));
 
         screen.draw();
-
-        a += step_a;
-        b += step_b;
-        std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
+        a = next_radian(a, STEP_A);
+        b = next_radian(b, STEP_B);
+        std::thread::sleep(std::time::Duration::from_millis(SLEEP_MS));
     }
 }
 

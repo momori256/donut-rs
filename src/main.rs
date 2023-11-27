@@ -76,7 +76,10 @@ impl Cell {
     }
 
     fn with_value(z_index: f64, value: f64) -> Self {
-        Self { z_index, luminance: value }
+        Self {
+            z_index,
+            luminance: value,
+        }
     }
 }
 
@@ -153,35 +156,46 @@ fn main() {
     let k1 = (width as f64) * k2 * 3.0 / (8.0 * (r1 + r2));
 
     let mut screen = Screen::new(width, height, k1, k2);
+    let granularity_t = 100;
+    let granularity_s = 100;
+
+    let ts: Vec<_> = (0..granularity_t)
+        .map(|ti| 2.0 * PI * (ti as f64) / (granularity_t as f64))
+        .collect();
+
+    let ss: Vec<_> = (0..granularity_s)
+        .map(|si| 2.0 * PI * (si as f64) / (granularity_s as f64))
+        .collect();
+
     let mut a = 0.0_f64;
     let mut b = 0.0_f64;
-    let step = 2.0 * PI / 100.0;
+    let step_a = 0.05;
+    let step_b = 0.03;
+    let sleep_ms = 20;
 
     loop {
         screen.clear();
 
-        let mut s = 0.0_f64;
-        while s < 2.0 * PI - step {
-            let mut t = 0.0;
-            while t < 2.0 * PI - step {
-                let p = Point::new(r2 + r1 * t.cos(), r1 * t.sin(), 0.0);
-                let p = p.rot_y(s).rot_x(a).rot_z(b);
+        ts.iter()
+            .map(|&t| {
+                return ss.iter().map(move |&s| {
+                    let p = Point::new(r2 + r1 * t.cos(), r1 * t.sin(), 0.0);
+                    let p = p.rot_y(s).rot_x(a).rot_z(b);
 
-                let np = Point::new(t.cos(), t.sin(), 0.0);
-                let np = np.rot_y(s).rot_x(a).rot_z(b);
-                let l = np.in_prod(&[0.0, 1.0, -1.0]);
-
-                screen.set(&p, l);
-                t += step;
-            }
-            s += step;
-        }
+                    let np = Point::new(t.cos(), t.sin(), 0.0);
+                    let np = np.rot_y(s).rot_x(a).rot_z(b);
+                    let luminance = np.in_prod(&[0.0, 1.0, -1.0]);
+                    return (p, luminance);
+                });
+            })
+            .flatten()
+            .for_each(|(point, luminance)| screen.set(&point, luminance));
 
         screen.draw();
 
-        a += 0.05;
-        b += 0.03;
-        std::thread::sleep(std::time::Duration::from_millis(20));
+        a += step_a;
+        b += step_b;
+        std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
     }
 }
 

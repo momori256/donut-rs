@@ -207,6 +207,7 @@ impl Screen {
         print!("\x1b[2J");
     }
 }
+
 fn dot<T>(a: &Vec<Vec<T>>, b: &Vec<Vec<T>>) -> Result<Vec<Vec<T>>, ()>
 where
     T: Default + Copy + std::ops::Mul<Output = T> + std::ops::AddAssign,

@@ -1,30 +1,30 @@
 use itertools::Itertools;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 fn main() {
-    const PI2: f64 = 2.0 * PI;
+    const PI2: f32 = 2.0 * PI;
 
     const WIDTH: usize = 30; // Screen width.
     const HEIGHT: usize = 30; // Screen height.
-    const R1: f64 = 1.0;
-    const R2: f64 = 2.0;
-    const K2: f64 = 5.0;
-    const K1: f64 = (WIDTH as f64) * K2 * 3.0 / (8.0 * (R1 + R2));
+    const R1: f32 = 1.0;
+    const R2: f32 = 2.0;
+    const K2: f32 = 5.0;
+    const K1: f32 = (WIDTH as f32) * K2 * 3.0 / (8.0 * (R1 + R2));
     let mut screen = Screen::new(WIDTH, HEIGHT, K1, K2);
 
     const GRANULARITY_S: usize = 100;
     const GRANULARITY_T: usize = 50;
 
     let s_values: Vec<_> = (0..GRANULARITY_S)
-        .map(|si| PI2 * (si as f64) / (GRANULARITY_S as f64))
+        .map(|si| PI2 * (si as f32) / (GRANULARITY_S as f32))
         .collect();
 
     let t_values: Vec<_> = (0..GRANULARITY_T)
-        .map(|ti| PI2 * (ti as f64) / (GRANULARITY_T as f64))
+        .map(|ti| PI2 * (ti as f32) / (GRANULARITY_T as f32))
         .collect();
 
-    const STEP_A: f64 = 0.05;
-    const STEP_B: f64 = 0.03;
+    const STEP_A: f32 = 0.05;
+    const STEP_B: f32 = 0.03;
     const SLEEP_MS: u64 = 20;
 
     let mut a = 0.0;
@@ -60,29 +60,29 @@ fn main() {
 }
 
 struct Point {
-    xyz: Vec<f64>,
+    xyz: Vec<f32>,
 }
 
 impl Point {
-    fn new(x: f64, y: f64, z: f64) -> Self {
+    fn new(x: f32, y: f32, z: f32) -> Self {
         let xyz = vec![x, y, z];
         Self { xyz }
     }
 
-    fn x(&self) -> f64 {
+    fn x(&self) -> f32 {
         self.xyz[0]
     }
 
-    fn y(&self) -> f64 {
+    fn y(&self) -> f32 {
         self.xyz[1]
     }
 
-    fn z(&self) -> f64 {
+    fn z(&self) -> f32 {
         self.xyz[2]
     }
 
     /// Rotate point around x-axis.
-    fn rot_x(self, radian: f64) -> Self {
+    fn rot_x(self, radian: f32) -> Self {
         let c = radian.cos();
         let s = radian.sin();
         let rot = vec![vec![1.0, 0.0, 0.0], vec![0.0, c, s], vec![0.0, -s, c]];
@@ -93,7 +93,7 @@ impl Point {
     }
 
     /// Rotate point around y-axis.
-    fn rot_y(self, radian: f64) -> Self {
+    fn rot_y(self, radian: f32) -> Self {
         let c = radian.cos();
         let s = radian.sin();
         let rot = vec![vec![c, 0.0, s], vec![0.0, 1.0, 0.0], vec![-s, 0.0, c]];
@@ -104,7 +104,7 @@ impl Point {
     }
 
     /// Rotate point around z-axis.
-    fn rot_z(self, radian: f64) -> Self {
+    fn rot_z(self, radian: f32) -> Self {
         let c = radian.cos();
         let s = radian.sin();
         let rot = vec![vec![c, s, 0.0], vec![-s, c, 0.0], vec![0.0, 0.0, 1.0]];
@@ -114,7 +114,7 @@ impl Point {
         }
     }
 
-    fn in_prod(&self, v: &[f64; 3]) -> f64 {
+    fn in_prod(&self, v: &[f32; 3]) -> f32 {
         self.xyz
             .iter()
             .zip(v.iter())
@@ -124,8 +124,8 @@ impl Point {
 
 #[derive(Clone)]
 struct Cell {
-    z_index: f64,
-    luminance: f64,
+    z_index: f32,
+    luminance: f32,
 }
 
 impl Cell {
@@ -136,7 +136,7 @@ impl Cell {
         }
     }
 
-    fn with_value(z_index: f64, value: f64) -> Self {
+    fn with_value(z_index: f32, value: f32) -> Self {
         Self {
             z_index,
             luminance: value,
@@ -148,12 +148,12 @@ struct Screen {
     width: usize,
     height: usize,
     buf: Vec<Vec<Cell>>,
-    k1: f64,
-    k2: f64,
+    k1: f32,
+    k2: f32,
 }
 
 impl Screen {
-    fn new(width: usize, height: usize, k1: f64, k2: f64) -> Self {
+    fn new(width: usize, height: usize, k1: f32, k2: f32) -> Self {
         let buf = vec![vec![Cell::new(); width + 1]; height + 1];
         Self {
             width,
@@ -164,14 +164,14 @@ impl Screen {
         }
     }
 
-    fn set(&mut self, p: &Point, l: f64) {
+    fn set(&mut self, p: &Point, l: f32) {
         if l <= 0.0 {
             return;
         }
 
         let ooz = 1.0 / (self.k2 + p.z());
-        let xp = ((self.width as f64) / 2.0 + self.k1 * ooz * p.x()) as usize;
-        let yp = ((self.height as f64) / 2.0 - self.k1 * ooz * p.y()) as usize;
+        let xp = ((self.width as f32) / 2.0 + self.k1 * ooz * p.x()) as usize;
+        let yp = ((self.height as f32) / 2.0 - self.k1 * ooz * p.y()) as usize;
 
         if ooz > self.buf[yp][xp].z_index {
             self.buf[yp][xp] = Cell::with_value(ooz, l * 8.0);
@@ -271,27 +271,27 @@ mod tests {
         let p = Point::new(1.0, 2.0, 3.0);
         let result = p.rot_x(PI / 2.0);
         println!("{}", result.z());
-        asesrt_eq_f64(result.x(), 1.0);
-        asesrt_eq_f64(result.y(), -3.0);
-        asesrt_eq_f64(result.z(), 2.0);
+        asesrt_eq_f32(result.x(), 1.0);
+        asesrt_eq_f32(result.y(), -3.0);
+        asesrt_eq_f32(result.z(), 2.0);
     }
 
     #[test]
     fn point_rot_y() {
         let p = Point::new(1.0, 2.0, 3.0);
         let result = p.rot_y(PI / 2.0);
-        asesrt_eq_f64(result.x(), -3.0);
-        asesrt_eq_f64(result.y(), 2.0);
-        asesrt_eq_f64(result.z(), 1.0);
+        asesrt_eq_f32(result.x(), -3.0);
+        asesrt_eq_f32(result.y(), 2.0);
+        asesrt_eq_f32(result.z(), 1.0);
     }
 
     #[test]
     fn point_rot_z() {
         let p = Point::new(1.0, 2.0, 3.0);
         let result = p.rot_z(PI / 2.0);
-        asesrt_eq_f64(result.x(), -2.0);
-        asesrt_eq_f64(result.y(), 1.0);
-        asesrt_eq_f64(result.z(), 3.0);
+        asesrt_eq_f32(result.x(), -2.0);
+        asesrt_eq_f32(result.y(), 1.0);
+        asesrt_eq_f32(result.z(), 3.0);
     }
 
     #[test]
@@ -312,8 +312,8 @@ mod tests {
         assert_eq!(result, expected);
     }
 
-    fn asesrt_eq_f64(a: f64, b: f64) {
+    fn asesrt_eq_f32(a: f32, b: f32) {
         let d = a - b;
-        assert!(d.abs() <= std::f64::EPSILON, "{a} != {b}");
+        assert!(d.abs() <= std::f32::EPSILON, "{a} != {b}");
     }
 }

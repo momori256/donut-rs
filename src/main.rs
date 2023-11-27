@@ -271,6 +271,24 @@ mod tests {
         asesrt_eq_f64(result.z(), 3.0);
     }
 
+    #[test]
+    fn screen_render() {
+        let mut screen = Screen::new(5, 5, 1.0, 2.0);
+        let p1 = Point::new(1.0, 2.0, 3.0);
+        let p2 = Point::new(5.0, 0.0, 1.0);
+        screen.set(&p1, 1.0);
+        screen.set(&p2, 1.4);
+        let result = screen.render();
+        let expected = "\
+. . . . . .
+. . . . . .
+. . * . @ .
+. . . . . .
+. . . . . .
+. . . . . .";
+        assert_eq!(result, expected);
+    }
+
     fn asesrt_eq_f64(a: f64, b: f64) {
         let d = a - b;
         assert!(d.abs() <= std::f64::EPSILON, "{a} != {b}");

@@ -39,11 +39,12 @@ fn main() {
             .iter()
             .map(|&s| {
                 return t_values.iter().map(move |&t| {
-                    let p = Point::new(R2 + R1 * t.cos(), R1 * t.sin(), 0.0);
-                    let p = p.rot_y(s).rot_x(a).rot_z(b);
+                    let p = Point::new(R2 + R1 * t.cos(), R1 * t.sin(), 0.0)
+                        .rot_y(s)
+                        .rot_x(a)
+                        .rot_z(b);
 
-                    let np = Point::new(t.cos(), t.sin(), 0.0);
-                    let np = np.rot_y(s).rot_x(a).rot_z(b);
+                    let np = Point::new(t.cos(), t.sin(), 0.0).rot_y(s).rot_x(a).rot_z(b);
                     let luminance = np.in_prod(&[0.0, 1.0, -1.0]);
                     return (p, luminance);
                 });

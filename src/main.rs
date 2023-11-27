@@ -64,19 +64,19 @@ impl Point {
 #[derive(Clone)]
 struct Cell {
     z_index: f64,
-    value: f64,
+    luminance: f64,
 }
 
 impl Cell {
     fn new() -> Self {
         Self {
             z_index: 0.0,
-            value: 0.0,
+            luminance: 0.0,
         }
     }
 
     fn with_value(z_index: f64, value: f64) -> Self {
-        Self { z_index, value }
+        Self { z_index, luminance: value }
     }
 }
 
@@ -129,7 +129,7 @@ impl Screen {
             .iter()
             .map(|v| {
                 v.iter()
-                    .map(|x| ".,-~:;=!*#$@".chars().nth(x.value as usize).unwrap())
+                    .map(|x| ".,-~:;=!*#$@".chars().nth(x.luminance as usize).unwrap())
                     .join(" ")
             })
             .join("\n")
